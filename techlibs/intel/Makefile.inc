@@ -21,4 +21,5 @@ $(eval $(call add_share_file,share/intel/cycloneive,techlibs/intel/cycloneive/ce
 #$(eval $(call add_share_file,share/intel/a10gx,techlibs/intel/a10gx/arith_map.v))
 #$(eval $(call add_share_file,share/intel/cycloneiv,techlibs/intel/cycloneiv/arith_map.v))
 #$(eval $(call add_share_file,share/intel/cycloneive,techlibs/intel/cycloneive/arith_map.v))
-
+$(eval $(call add_share_file,share/intel/max25_libre,techlibs/intel/max25_libre/cells_map.v))
+$(eval $(call add_share_file,share/intel/max25_libre,techlibs/intel/max25_libre/cells_sim.v))

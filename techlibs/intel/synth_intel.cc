@@ -36,11 +36,14 @@ struct SynthIntelPass : public ScriptPass {
     log("\n");
     log("This command runs synthesis for Intel FPGAs.\n");
     log("\n");
-    log("    -family < max10 | a10gx | cyclone10 | cyclonev | cycloneiv | cycloneive>\n");
+    log("    -family < max25_libre | max10 | a10gx | cyclone10 | cyclonev | cycloneiv | cycloneive>\n");
     log("        generate the synthesis netlist for the specified family.\n");
     log("        MAX10 is the default target if not family argument specified.\n");
     log("        For Cyclone GX devices, use cycloneiv argument; For Cyclone E, use cycloneive.\n");
     log("        Cyclone V and Arria 10 GX devices are experimental, use it with a10gx argument.\n");
+    log("        MAX II and MAX V support is highly experimental. It is targetting\n");
+    log("        an open-source place-and-route implementation rather than Quartus.\n");
+    log("        As such, it models primitives in an incompatible way.\n");
     log("\n");
     log("    -top <module>\n");
     log("        use the specified module as top module (default='top')\n");
@@ -145,8 +148,15 @@ struct SynthIntelPass : public ScriptPass {
 
     if (!design->full_selection())
       log_cmd_error("This command only operates on fully selected designs!\n");
-    if (family_opt != "max10" && family_opt !="a10gx" && family_opt != "cyclonev" && family_opt !="cycloneiv" && family_opt !="cycloneive" && family_opt != "cyclone10")
+    if (family_opt != "max10" && family_opt !="a10gx" && family_opt != "cyclonev" && family_opt !="cycloneiv" && family_opt !="cycloneive" && family_opt != "cyclone10" && family_opt != "max25_libre")
       log_cmd_error("Invalid or not family specified: '%s'\n", family_opt.c_str());
+
+    if (family_opt == "max25_libre") {
+      // These chips do not have BRAMs
+      nobram = true;
+      // Don't map IO pads for now for VPR
+      noiopads = true;
+    }
 
     log_header(design, "Executing SYNTH_INTEL pass.\n");
     log_push();
@@ -162,6 +172,8 @@ struct SynthIntelPass : public ScriptPass {
       {
         if(check_label("family") && family_opt=="max10")
           run("read_verilog -sv -lib +/intel/max10/cells_sim.v");
+        else if(check_label("family") && family_opt=="max25_libre")
+          run("read_verilog -lib +/intel/max25_libre/cells_sim.v");
         else if(check_label("family") && family_opt=="a10gx")
           run("read_verilog -sv -lib +/intel/a10gx/cells_sim.v");
         else if(check_label("family") && family_opt=="cyclonev")
@@ -172,9 +184,11 @@ struct SynthIntelPass : public ScriptPass {
           run("read_verilog -sv -lib +/intel/cycloneiv/cells_sim.v");
         else
           run("read_verilog -sv -lib +/intel/cycloneive/cells_sim.v");
-        // Misc and common cells
-        run("read_verilog -sv -lib +/intel/common/m9k_bb.v");
-        run("read_verilog -sv -lib +/intel/common/altpll_bb.v");
+        if(family_opt != "max25_libre") {
+          // Misc and common cells
+          run("read_verilog -sv -lib +/intel/common/m9k_bb.v");
+          run("read_verilog -sv -lib +/intel/common/altpll_bb.v");
+        }
         run(stringf("hierarchy -check %s", help_mode ? "-top <top>" : top_opt.c_str()));
       }
 
@@ -228,6 +242,8 @@ struct SynthIntelPass : public ScriptPass {
           run("iopadmap -bits -outpad $__outpad I:O -inpad $__inpad O:I", "(unless -noiopads)");
         if(family_opt=="max10")
           run("techmap -map +/intel/max10/cells_map.v");
+        else if(family_opt=="max25_libre")
+          run("techmap -map +/intel/max25_libre/cells_map.v");
         else if(family_opt=="a10gx")
           run("techmap -map +/intel/a10gx/cells_map.v");
         else if(family_opt=="cyclonev")
